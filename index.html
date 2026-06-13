@@ -21,11 +21,11 @@
             --border-disponible: #22c55e;
             --text-disponible: #14532d;
             
-            --color-reservado: #fef08a;  /* Amarillo */
+            --color-reservado: #fef08a; /* Amarillo */
             --border-reservado: #eab308;
             --text-reservado: #713f12;
             
-            --color-vendido: #fee2e2;    /* Rojo */
+            --color-vendido: #fee2e2; /* Rojo */
             --border-vendido: #ef4444;
             --text-vendido: #991b1b;
         }
@@ -56,21 +56,30 @@
             font-size: 34px;
             font-weight: 800;
             color: var(--primary);
-            border: 2px dashed transparent;
+            border: 2px dashed #cbd5e1;
             padding: 6px 12px;
             display: inline-block;
             border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
         }
+        .editable-title:hover { background: var(--primary-light); }
+        
         .editable-date, .editable-price {
             font-size: 15px;
             color: var(--text-main);
             font-weight: 600;
             margin: 8px 10px 0 10px;
-            padding: 4px 12px;
+            padding: 6px 16px;
             display: inline-block;
             border-radius: 20px;
             background: var(--inner-card);
+            border: 1px dashed #cbd5e1;
+            cursor: pointer;
+            transition: background 0.2s;
         }
+        .editable-date:hover, .editable-price:hover { background: #e2e8f0; }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -159,14 +168,14 @@
         .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; color: var(--text-muted); }
         .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 14px; background: #ffffff; color: var(--text-main); }
         
-        .search-box { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 14px; margin-top: 10px; margin-bottom: 5px; }
+        .search-box { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
         .btn-submit { background: var(--primary); color: white; border: none; padding: 12px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; font-size: 15px; margin-top: 10px; }
         .btn-submit:hover { background: var(--primary-dark); }
         
         .filter-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px; }
         .filter-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-        .select-filter { padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 600; color: var(--text-main); background-color: #ffffff; cursor: pointer; }
-        .btn-excel { background: #16a34a; color: white; border: none; padding: 9px 16px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .select-filter { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 600; color: var(--text-main); background-color: #ffffff; cursor: pointer; font-size: 14px; }
+        .btn-excel { background: #16a34a; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
         
         .table-container { grid-column: span 2; background: var(--card-bg); padding: 25px; border-radius: 16px; border: 1px solid #e2e8f0; margin-top: 10px; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; color: var(--text-main); min-width: 1000px; }
@@ -196,10 +205,10 @@
 <div class="container">
     <div class="header-section">
         <button class="btn-reset" onclick="resetSystem()">Reiniciar Toda la Rifa</button>
-        <div class="editable-title" id="mainTitle">YOHANDRY RIFAS ONLINE</div>
+        <div class="editable-title" id="mainTitle" onclick="editHeaderField('title')">CARGANDO...</div>
         <div>
-            <div class="editable-date" id="sorteoDate">Fecha: 15 de Julio de 2026</div>
-            <div class="editable-price" id="ticketPrice">Precio por Número: 5</div>
+            <div class="editable-date" id="sorteoDate" onclick="editHeaderField('date')">Fecha: Cargando...</div>
+            <div class="editable-price" id="ticketPrice" onclick="editHeaderField('price')">Precio por Número: 5</div>
         </div>
     </div>
 
@@ -271,7 +280,16 @@
             <div class="filter-container">
                 <div class="matrix-title">Base de Datos General</div>
                 <div class="filter-controls">
-                    <input type="text" id="searchTable" class="search-box" style="margin: 0; width: 220px;" oninput="renderTable()" placeholder="🔍 Buscar cliente...">
+                    <!-- Buscador de Texto -->
+                    <input type="text" id="searchTable" class="search-box" style="width: 200px;" oninput="renderTable()" placeholder="🔍 Buscar cliente...">
+                    
+                    <!-- NUEVO: Filtro por Estado (Reservado o Pagado) -->
+                    <select id="filterEstadoTable" class="select-filter" onchange="renderTable()">
+                        <option value="Todos">📊 Todos los estados</option>
+                        <option value="Reservado">🟡 Solo Reservados</option>
+                        <option value="Pagado">🔴 Solo Pagados</option>
+                    </select>
+
                     <button class="btn-excel" onclick="exportToExcel()">📊 Exportar a Excel</button>
                 </div>
             </div>
@@ -297,245 +315,77 @@
     // ==========================================
     // CONFIGURACIÓN DE TU BASE DE DATOS EN LA NUBE
     // ==========================================
-    const FIREBASE_DB_URL = "https://rifas-yohandry-default-rtdb.firebaseio.com"; 
-    // Ejemplo: "https://rifas-yohandry-default-rtdb.firebaseio.com/"
+    const FIREBASE_DB_URL = "TU_URL_DE_FIREBASE_AQUÍ"; 
 
     let rifaData = {};
-    let config = { title: "YOHANDRY RIFAS PREMIUM", date: "15 de Julio de 2026", price: "5" };
+    let config = { title: "YOHANDRY RIFAS ONLINE", date: "Fecha: 15 de Julio de 2026", price: "5" };
     let selectedNumbers = [];
     let modoAbono = false;
     let abonoAcumuladoExistente = 0;
 
-    // Función auxiliar para conectar con Firebase mediante la REST API nativa
+    // Cargar datos tanto de la Rifa como de la Configuración del encabezado
     async function fetchFromFirebase() {
         if(FIREBASE_DB_URL.includes("TU_URL")) return;
         try {
-            const res = await fetch(`${FIREBASE_DB_URL}/rifaData.json`);
-            const data = await res.json();
+            // Cargar Números
+            const resData = await fetch(`${FIREBASE_DB_URL}/rifaData.json`);
+            const data = await resData.json();
             rifaData = data || {};
+            
+            // Cargar Configuración (Título, fecha, precio)
+            const resConfig = await fetch(`${FIREBASE_DB_URL}/config.json`);
+            const configData = await resConfig.json();
+            if(configData) {
+                config = configData;
+                updateHeaderDOM();
+            }
+
             renderMatrix();
             renderTable();
         } catch (e) { console.error("Error cargando de la nube:", e); }
     }
 
     async function saveToFirebase() {
-        if(FIREBASE_DB_URL.includes("TU_URL")) {
-            Swal.fire("Configuración requerida", "Por favor ingresa tu URL de Firebase en el código de la línea 194.", "warning");
-            return;
-        }
+        if(FIREBASE_DB_URL.includes("TU_URL")) return;
         try {
             await fetch(`${FIREBASE_DB_URL}/rifaData.json`, {
                 method: 'PUT',
                 body: JSON.stringify(rifaData)
             });
-        } catch(e) { console.error("Error al guardar en la nube:", e); }
+        } catch(e) { console.error("Error al guardar datos:", e); }
     }
 
-    // Escuchar actualizaciones automáticas cada 3 segundos (Sincronización total multi-dispositivo)
-    setInterval(fetchFromFirebase, 3000);
-
-    function renderMatrix() {
-        const matrix = document.getElementById('numberMatrix');
-        if(!matrix) return;
-        matrix.innerHTML = '';
-        
-        for(let i = 1; i <= 1000; i++) {
-            const square = document.createElement('div');
-            let estadoClass = 'disponible';
-            let clientLabel = 'Libre';
-            
-            if (rifaData && rifaData[i]) {
-                if (rifaData[i].estado === 'Pagado') estadoClass = 'pagado';
-                else if (rifaData[i].estado === 'Reservado') estadoClass = 'reservado';
-                clientLabel = rifaData[i].name || 'Ocupado';
-            }
-            
-            square.className = `square ${estadoClass}`;
-            if(selectedNumbers.includes(i)) square.classList.add('selected-active');
-            
-            square.innerHTML = `<div class="num-val">${String(i).padStart(3, '0')}</div><div class="client-name">${clientLabel}</div>`;
-            square.onclick = () => toggleNumberSelection(i);
-            matrix.appendChild(square);
-        }
-        calculateTotals();
-    }
-
-    function toggleNumberSelection(num) {
-        const index = selectedNumbers.indexOf(num);
-        if (index > -1) selectedNumbers.splice(index, 1);
-        else {
-            if (rifaData && rifaData[num] && rifaData[num].estado === 'Reservado' && selectedNumbers.length > 0 && !modoAbono) return;
-            selectedNumbers.push(num);
-        }
-        renderMatrixBorders();
-        updateAutomaticFields();
-    }
-
-    function renderMatrixBorders() {
-        const squares = document.querySelectorAll('.matrix .square');
-        squares.forEach((sq, idx) => {
-            if(selectedNumbers.includes(idx + 1)) sq.classList.add('selected-active');
-            else sq.classList.remove('selected-active');
-        });
-    }
-
-    function updateAutomaticFields() {
-        const abonoAlert = document.getElementById('abonoAlert');
-        if(selectedNumbers.length === 0) {
-            document.getElementById('formNumText').value = '';
-            if(abonoAlert) abonoAlert.style.display = 'none';
-            modoAbono = false;
-            return;
-        }
-
-        document.getElementById('formNumText').value = selectedNumbers.sort((a,b)=>a-b).map(n=>String(n).padStart(3,'0')).join(', ');
-        const firstNum = selectedNumbers[0];
-        
-        if (rifaData && rifaData[firstNum] && rifaData[firstNum].estado === 'Reservado') {
-            modoAbono = true;
-            abonoAcumuladoExistente = selectedNumbers.reduce((sum, n) => sum + (parseFloat(rifaData[n].monto) || 0), 0);
-            document.getElementById('formEstado').value = 'Reservado';
-            document.getElementById('formName').value = rifaData[firstNum].name || '';
-            document.getElementById('formPhone').value = rifaData[firstNum].phone || '';
-            document.getElementById('formDireccion').value = rifaData[firstNum].direccion || '';
-            document.getElementById('formMetodo').value = rifaData[firstNum].metodo || ''; 
-            document.getElementById('formMonto').value = ''; 
-            if(abonoAlert) abonoAlert.style.display = 'block';
-        } else {
-            modoAbono = false;
-            if(abonoAlert) abonoAlert.style.display = 'none';
-            document.getElementById('formMonto').value = (selectedNumbers.length * parseFloat(config.price)).toFixed(2);
-        }
-    }
-
-    function handleEstadoChange() {
-        if (!modoAbono) {
-            document.getElementById('formMonto').value = (selectedNumbers.length * parseFloat(config.price)).toFixed(2);
-        }
-    }
-
-    async function saveClient(e) {
-        e.preventDefault();
-        if(selectedNumbers.length === 0) return;
-
-        let estadoForm = document.getElementById('formEstado').value;
-        const name = document.getElementById('formName').value.trim();
-        const phone = document.getElementById('formPhone').value;
-        const direccion = document.getElementById('formDireccion').value.trim();
-        const inputMonto = parseFloat(document.getElementById('formMonto').value) || 0;
-        const metodo = document.getElementById('formMetodo').value || 'Ninguno';
-        
-        const now = new Date();
-        const timestamp = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-
-        let montoPorNumero = inputMonto / selectedNumbers.length;
-        if (modoAbono) montoPorNumero += (abonoAcumuladoExistente / selectedNumbers.length);
-
-        selectedNumbers.forEach(num => {
-            rifaData[num] = { estado: estadoForm, name: name, phone: phone, direccion: direccion, monto: montoPorNumero, metodo: metodo, timestamp: timestamp };
-        });
-
-        await saveToFirebase();
-        renderMatrix();
-        renderTable();
-
-        if (estadoForm === 'Pagado') {
-            Swal.fire({
-                title: '🎉 ¡Venta Registrada!',
-                html: `
-                    <div class="ticket-box">
-                        <div class="ticket-title">${config.title}</div>
-                        <div class="ticket-subtitle">COMPROBANTE OFICIAL</div>
-                        <div class="ticket-row"><span>Cliente:</span> <span><b>${name}</b></span></div>
-                        <div class="ticket-row"><span>Sorteo:</span> <span><b>${config.date}</b></span></div>
-                        <div class="ticket-row"><span>Cant. Números:</span> <span>${selectedNumbers.length}</span></div>
-                        <div class="ticket-row" style="background:#f1f5f9; padding:4px 0;"><span>Nº Asignados:</span> <span style="color:#ef4444; font-weight:bold;">${selectedNumbers.join(', ')}</span></div>
-                        <div class="ticket-total"><span>TOTAL PAGADO:</span> <span>$ ${(montoPorNumero * selectedNumbers.length).toFixed(2)}</span></div>
-                    </div>
-                `
+    async function saveConfigToFirebase() {
+        if(FIREBASE_DB_URL.includes("TU_URL")) return;
+        try {
+            await fetch(`${FIREBASE_DB_URL}/config.json`, {
+                method: 'PUT',
+                body: JSON.stringify(config)
             });
-        }
-
-        selectedNumbers = []; modoAbono = false;
-        document.getElementById('rifaForm').reset();
+            updateHeaderDOM();
+        } catch(e) { console.error("Error al guardar config:", e); }
     }
 
-    function editGroup(numsString) {
-        selectedNumbers = numsString.split(',').map(n => parseInt(n));
-        updateAutomaticFields();
-        renderMatrixBorders();
+    function updateHeaderDOM() {
+        document.getElementById('mainTitle').innerText = config.title || "YOHANDRY RIFAS ONLINE";
+        document.getElementById('sorteoDate').innerText = config.date.includes("Fecha:") ? config.date : `Fecha: ${config.date}`;
+        document.getElementById('ticketPrice').innerText = `Precio por Número: ${config.price || 5}`;
     }
 
-    async function deleteGroup(numsString) {
-        const arr = numsString.split(',').map(n => parseInt(n));
-        arr.forEach(num => delete rifaData[num]);
-        await saveToFirebase();
-        selectedNumbers = [];
-        renderMatrix();
-        renderTable();
-    }
+    // Modal interactivo para cambiar Título, Fecha o Precio al hacer clic
+    async function editHeaderField(field) {
+        let titleText = "", inputValue = "", labelText = "";
+        if (field === 'title') { titleText = 'Editar Título'; inputValue = config.title; labelText = 'Nombre de la Rifa'; }
+        if (field === 'date') { titleText = 'Editar Fecha'; inputValue = config.date.replace("Fecha: ", ""); labelText = 'Fecha del Sorteo'; }
+        if (field === 'price') { titleText = 'Editar Precio'; inputValue = config.price; labelText = 'Precio de cada número ($)'; }
 
-    function calculateTotals() {
-        let reservados = 0, pagados = 0, rec_usd = 0, reservado_usd = 0;   
-        Object.keys(rifaData).forEach(num => {
-            const item = rifaData[num]; if(!item) return;
-            if(item.estado === 'Pagado') { pagados++; rec_usd += parseFloat(item.monto); }
-            else if(item.estado === 'Reservado') { reservados++; reservado_usd += parseFloat(item.monto); }
-        });
-        document.getElementById('statDisp').innerText = 1000 - (reservados + pagados);
-        document.getElementById('statRes').innerText = reservados;
-        document.getElementById('statRecaudado').innerText = `$ ${rec_usd.toFixed(2)}`;
-        document.getElementById('statReservadoCapital').innerText = `$ ${reservado_usd.toFixed(2)}`;
-    }
-
-    function renderTable() {
-        const tbody = document.getElementById('clientTableBody'); if(!tbody) return;
-        tbody.innerHTML = '';
-        let clientGroup = {}; let totalGeneral = 0;
-        const query = document.getElementById('searchTable')?.value.toLowerCase().trim() || '';
-
-        Object.keys(rifaData).forEach(num => {
-            const c = rifaData[num]; if(!c) return;
-            if(query !== '' && !c.name.toLowerCase().includes(query)) return;
-
-            const key = `${c.name}_${c.estado}_${c.timestamp}`;
-            if(!clientGroup[key]) clientGroup[key] = { name: c.name, estado: c.estado, phone: c.phone, direccion: c.direccion, metodo: c.metodo, monto: 0, count: 0, numeritos: [], timestamp: c.timestamp };
-            clientGroup[key].monto += parseFloat(c.monto);
-            clientGroup[key].count++;
-            clientGroup[key].numeritos.push(num);
+        const { value: text } = await Swal.fire({
+            title: titleText,
+            input: field === 'price' ? 'number' : 'text',
+            inputLabel: labelText,
+            inputValue: inputValue,
+            showCancelButton: true,
+            inputValidator: (value) => { if (!value) return '¡No puedes dejar este campo vacío!' }
         });
 
-        Object.keys(clientGroup).forEach(k => {
-            const cg = clientGroup[k]; totalGeneral += cg.monto;
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><small>${cg.timestamp}</small></td><td><b>${cg.numeritos.join(', ')}</b></td>
-                <td><span class="badge ${cg.estado === 'Pagado'?'pagado':'reservado'}">${cg.estado}</span></td>
-                <td>${cg.name}</td><td>${cg.phone||'-'}</td><td>${cg.direccion||'-'}</td><td>${cg.count}</td>
-                <td>$ ${cg.monto.toFixed(2)}</td><td>${cg.metodo}</td>
-                <td><button class="action-btn btn-edit" onclick="editGroup('${cg.numeritos.join(',')}')">Editar</button><button class="action-btn btn-del" onclick="deleteGroup('${cg.numeritos.join(',')}')">Liberar</button></td>`;
-            tbody.appendChild(tr);
-        });
-        document.getElementById('tableTotalSum').innerText = `$ ${totalGeneral.toFixed(2)}`;
-    }
-
-    function exportToExcel() {
-        // Mismo algoritmo de exportación nativo del paso anterior
-        let excelTemplate = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body><table border="1"><thead><tr><th>Fecha</th><th>Números</th><th>Estado</th><th>Cliente</th><th>Monto</th></tr></thead><tbody>`;
-        Object.keys(rifaData).forEach(n => {
-            excelTemplate += `<tr><td>${rifaData[n].timestamp}</td><td>${n}</td><td>${rifaData[n].estado}</td><td>${rifaData[n].name}</td><td>${rifaData[n].monto}</td></tr>`;
-        });
-        excelTemplate += `</tbody></table></body></html>`;
-        const blob = new Blob([excelTemplate], { type: 'application/vnd.ms-excel' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `Rifa_Online.xls`; a.click();
-    }
-
-    async function resetSystem() {
-        rifaData = {}; await saveToFirebase(); renderMatrix(); renderTable();
-    }
-
-    window.addEventListener('DOMContentLoaded', fetchFromFirebase);
-</script>
-</body>
-</html>
+        if 
