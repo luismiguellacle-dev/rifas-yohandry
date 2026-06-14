@@ -21,11 +21,11 @@
             --border-disponible: #22c55e;
             --text-disponible: #14532d;
             
-            --color-reservado: #fef08a; /* Amarillo */
+            --color-reservado: #fef08a;  /* Amarillo */
             --border-reservado: #eab308;
             --text-reservado: #713f12;
             
-            --color-vendido: #fee2e2; /* Rojo */
+            --color-vendido: #fee2e2;    /* Rojo */
             --border-vendido: #ef4444;
             --text-vendido: #991b1b;
         }
@@ -315,7 +315,7 @@
     // ==========================================
     // CONFIGURACIÓN DE TU BASE DE DATOS EN LA NUBE
     // ==========================================
-    const FIREBASE_DB_URL = "https://rifas-yohandry-default-rtdb.firebaseio.com"; 
+    const FIREBASE_DB_URL = "TU_URL_DE_FIREBASE_AQUÍ"; 
 
     let rifaData = {};
     let config = { title: "YOHANDRY RIFAS ONLINE", date: "Fecha: 15 de Julio de 2026", price: "5" };
@@ -388,4 +388,241 @@
             inputValidator: (value) => { if (!value) return '¡No puedes dejar este campo vacío!' }
         });
 
-        if 
+        if (text) {
+            config[field] = text;
+            await saveConfigToFirebase();
+            Swal.fire('¡Actualizado!', 'El dato ha sido sincronizado en todos los dispositivos.', 'success');
+        }
+    }
+
+    // Sincronización automática periódica
+    setInterval(fetchFromFirebase, 3000);
+
+    function renderMatrix() {
+        const matrix = document.getElementById('numberMatrix');
+        if(!matrix) return;
+        matrix.innerHTML = '';
+        
+        for(let i = 1; i <= 1000; i++) {
+            const square = document.createElement('div');
+            let estadoClass = 'disponible';
+            let clientLabel = 'Libre';
+            
+            if (rifaData && rifaData[i]) {
+                if (rifaData[i].estado === 'Pagado') estadoClass = 'pagado';
+                else if (rifaData[i].estado === 'Reservado') estadoClass = 'reservado';
+                clientLabel = rifaData[i].name || 'Ocupado';
+            }
+            
+            square.className = `square ${estadoClass}`;
+            if(selectedNumbers.includes(i)) square.classList.add('selected-active');
+            
+            square.innerHTML = `<div class="num-val">${String(i).padStart(3, '0')}</div><div class="client-name">${clientLabel}</div>`;
+            square.onclick = () => toggleNumberSelection(i);
+            matrix.appendChild(square);
+        }
+        calculateTotals();
+    }
+
+    function toggleNumberSelection(num) {
+        const index = selectedNumbers.indexOf(num);
+        if (index > -1) selectedNumbers.splice(index, 1);
+        else {
+            if (rifaData && rifaData[num] && rifaData[num].estado === 'Reservado' && selectedNumbers.length > 0 && !modoAbono) return;
+            selectedNumbers.push(num);
+        }
+        renderMatrixBorders();
+        updateAutomaticFields();
+    }
+
+    function renderMatrixBorders() {
+        const squares = document.querySelectorAll('.matrix .square');
+        squares.forEach((sq, idx) => {
+            if(selectedNumbers.includes(idx + 1)) sq.classList.add('selected-active');
+            else sq.classList.remove('selected-active');
+        });
+    }
+
+    function updateAutomaticFields() {
+        const abonoAlert = document.getElementById('abonoAlert');
+        if(selectedNumbers.length === 0) {
+            document.getElementById('formNumText').value = '';
+            if(abonoAlert) abonoAlert.style.display = 'none';
+            modoAbono = false;
+            return;
+        }
+
+        document.getElementById('formNumText').value = selectedNumbers.sort((a,b)=>a-b).map(n=>String(n).padStart(3,'0')).join(', ');
+        const firstNum = selectedNumbers[0];
+        
+        if (rifaData && rifaData[firstNum] && rifaData[firstNum].estado === 'Reservado') {
+            modoAbono = true;
+            abonoAcumuladoExistente = selectedNumbers.reduce((sum, n) => sum + (parseFloat(rifaData[n].monto) || 0), 0);
+            document.getElementById('formEstado').value = 'Reservado';
+            document.getElementById('formName').value = rifaData[firstNum].name || '';
+            document.getElementById('formPhone').value = rifaData[firstNum].phone || '';
+            document.getElementById('formDireccion').value = rifaData[firstNum].direccion || '';
+            document.getElementById('formMetodo').value = rifaData[firstNum].metodo || ''; 
+            document.getElementById('formMonto').value = ''; 
+            if(abonoAlert) abonoAlert.style.display = 'block';
+        } else {
+            modoAbono = false;
+            if(abonoAlert) abonoAlert.style.display = 'none';
+            document.getElementById('formMonto').value = (selectedNumbers.length * parseFloat(config.price)).toFixed(2);
+        }
+    }
+
+    function handleEstadoChange() {
+        if (!modoAbono) {
+            document.getElementById('formMonto').value = (selectedNumbers.length * parseFloat(config.price)).toFixed(2);
+        }
+    }
+
+    async function saveClient(e) {
+        e.preventDefault();
+        if(selectedNumbers.length === 0) return;
+
+        let estadoForm = document.getElementById('formEstado').value;
+        const name = document.getElementById('formName').value.trim();
+        const phone = document.getElementById('formPhone').value;
+        const direccion = document.getElementById('formDireccion').value.trim();
+        const inputMonto = parseFloat(document.getElementById('formMonto').value) || 0;
+        const metodo = document.getElementById('formMetodo').value || 'Ninguno';
+        
+        const now = new Date();
+        const timestamp = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+        let montoPorNumero = inputMonto / selectedNumbers.length;
+        if (modoAbono) montoPorNumero += (abonoAcumuladoExistente / selectedNumbers.length);
+
+        selectedNumbers.forEach(num => {
+            rifaData[num] = { estado: estadoForm, name: name, phone: phone, direccion: direccion, monto: montoPorNumero, metodo: metodo, timestamp: timestamp };
+        });
+
+        await saveToFirebase();
+        renderMatrix();
+        renderTable();
+
+        if (estadoForm === 'Pagado') {
+            Swal.fire({
+                title: '🎉 ¡Venta Registrada!',
+                html: `
+                    <div class="ticket-box">
+                        <div class="ticket-title">${config.title}</div>
+                        <div class="ticket-subtitle">COMPROBANTE OFICIAL</div>
+                        <div class="ticket-row"><span>Cliente:</span> <span><b>${name}</b></span></div>
+                        <div class="ticket-row"><span>Sorteo:</span> <span><b>${config.date}</b></span></div>
+                        <div class="ticket-row"><span>Cant. Números:</span> <span>${selectedNumbers.length}</span></div>
+                        <div class="ticket-row" style="background:#f1f5f9; padding:4px 0;"><span>Nº Asignados:</span> <span style="color:#ef4444; font-weight:bold;">${selectedNumbers.join(', ')}</span></div>
+                        <div class="ticket-total"><span>TOTAL PAGADO:</span> <span>$ ${(montoPorNumero * selectedNumbers.length).toFixed(2)}</span></div>
+                    </div>
+                `
+            });
+        }
+
+        selectedNumbers = []; modoAbono = false;
+        document.getElementById('rifaForm').reset();
+    }
+
+    function editGroup(numsString) {
+        selectedNumbers = numsString.split(',').map(n => parseInt(n));
+        updateAutomaticFields();
+        renderMatrixBorders();
+    }
+
+    async function deleteGroup(numsString) {
+        const arr = numsString.split(',').map(n => parseInt(n));
+        arr.forEach(num => delete rifaData[num]);
+        await saveToFirebase();
+        selectedNumbers = [];
+        renderMatrix();
+        renderTable();
+    }
+
+    function calculateTotals() {
+        let reservados = 0, pagados = 0, rec_usd = 0, reservado_usd = 0;   
+        Object.keys(rifaData).forEach(num => {
+            const item = rifaData[num]; if(!item) return;
+            if(item.estado === 'Pagado') { pagados++; rec_usd += parseFloat(item.monto); }
+            else if(item.estado === 'Reservado') { reservados++; reservado_usd += parseFloat(item.monto); }
+        });
+        document.getElementById('statDisp').innerText = 1000 - (reservados + pagados);
+        document.getElementById('statRes').innerText = reservados;
+        document.getElementById('statRecaudado').innerText = `$ ${rec_usd.toFixed(2)}`;
+        document.getElementById('statReservadoCapital').innerText = `$ ${reservado_usd.toFixed(2)}`;
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('clientTableBody'); if(!tbody) return;
+        tbody.innerHTML = '';
+        let clientGroup = {}; let totalGeneral = 0;
+        
+        const query = document.getElementById('searchTable')?.value.toLowerCase().trim() || '';
+        const filterEstado = document.getElementById('filterEstadoTable')?.value || 'Todos';
+
+        Object.keys(rifaData).forEach(num => {
+            const c = rifaData[num]; if(!c) return;
+            
+            // Filtro por Texto (Nombre)
+            if(query !== '' && !c.name.toLowerCase().includes(query)) return;
+            
+            // NUEVO: Filtro por Estado (Reservado o Pagado)
+            if(filterEstado !== 'Todos' && c.estado !== filterEstado) return;
+
+            const key = `${c.name}_${c.estado}_${c.timestamp}`;
+            if(!clientGroup[key]) clientGroup[key] = { name: c.name, estado: c.estado, phone: c.phone, direccion: c.direccion, metodo: c.metodo, monto: 0, count: 0, numeritos: [], timestamp: c.timestamp };
+            clientGroup[key].monto += parseFloat(c.monto);
+            clientGroup[key].count++;
+            clientGroup[key].numeritos.push(num);
+        });
+
+        Object.keys(clientGroup).forEach(k => {
+            const cg = clientGroup[k]; totalGeneral += cg.monto;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><small>${cg.timestamp}</small></td><td><b>${cg.numeritos.join(', ')}</b></td>
+                <td><span class="badge ${cg.estado === 'Pagado'?'pagado':'reservado'}">${cg.estado}</span></td>
+                <td>${cg.name}</td><td>${cg.phone||'-'}</td><td>${cg.direccion||'-'}</td><td>${cg.count}</td>
+                <td>$ ${cg.monto.toFixed(2)}</td><td>${cg.metodo}</td>
+                <td><button class="action-btn btn-edit" onclick="editGroup('${cg.numeritos.join(',')}')">Editar</button><button class="action-btn btn-del" onclick="deleteGroup('${cg.numeritos.join(',')}')">Liberar</button></td>`;
+            tbody.appendChild(tr);
+        });
+        document.getElementById('tableTotalSum').innerText = `$ ${totalGeneral.toFixed(2)}`;
+    }
+
+    function exportToExcel() {
+        let excelTemplate = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body><table border="1"><thead><tr><th>Fecha</th><th>Números</th><th>Estado</th><th>Cliente</th><th>Monto</th></tr></thead><tbody>`;
+        Object.keys(rifaData).forEach(n => {
+            excelTemplate += `<tr><td>${rifaData[n].timestamp}</td><td>${n}</td><td>${rifaData[n].estado}</td><td>${rifaData[n].name}</td><td>${rifaData[n].monto}</td></tr>`;
+        });
+        excelTemplate += `</tbody></table></body></html>`;
+        const blob = new Blob([excelTemplate], { type: 'application/vnd.ms-excel' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = `Rifa_Online.xls`; a.click();
+    }
+
+    async function resetSystem() {
+        const result = await Swal.fire({
+            title: '¿Estás completamente seguro?',
+            text: "¡Esto borrará TODOS los números vendidos y reservados en todos los teléfonos!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, reiniciar todo',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            rifaData = {}; 
+            await saveToFirebase(); 
+            renderMatrix(); 
+            renderTable();
+            Swal.fire('¡Saneado!', 'El mapa de la rifa vuelve a estar en 100% disponible.', 'success');
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', fetchFromFirebase);
+</script>
+</body>
+</html>
